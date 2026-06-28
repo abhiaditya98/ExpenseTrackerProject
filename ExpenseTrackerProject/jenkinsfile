@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    environment {
+        PYTHON_VENV_DIR = '/home/ec2-user/venv'
+        // Point to the physical app directory on this same server
+        DEPLOY_DIR = '/home/ec2-user/_Django'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Code successfully checked out by Jenkins.'
+            }
+        }
+
+        stage('Setup Environment & Test') {
+            steps {
+                // 1. Create and setup virtual env in Jenkins workspace to run tests
+                sh "python3.12 -m venv ${PYTHON_VENV_DIR}"
+                sh "./${PYTHON_VENV_DIR}/bin/pip install -r requirements.txt"
+                
+                // 2. Run your Django tests
+                sh "./${PYTHON_VENV_DIR}/bin/python manage.py test --noinput"
+            }
+        }
+
+        stage('Local Deployment to Production Folder') {
+            steps {
+                // Instead of SSH, we just sync/copy the files directly on the same server!
+                // rsync copies your fresh code into the production folder, ignoring git files and venv
+                sh "rsync -avz --exclude='.git' --exclude='venv' ./ ${DEPLOY_DIR}/"
+                
+                // Now run the Django production setup tasks directly inside the production folder
+                sh """
+                    cd ${DEPLOY_DIR}
+                    
+                    # Create or update the production virtual environment
+                    python3.12 -m venv venv
+                    ./venv/bin/pip install -r requirements.txt
+                    
+                    # Run database migrations
+                    ./venv/bin/python manage.py makemigrations --noinput
+                    ./venv/bin/python manage.py migrate --noinput
+                    
+                    # Collect static files
+                    ./venv/bin/python manage.py collectstatic --noinput
+                """
+            }
+        }
+    }
+}
