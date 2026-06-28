@@ -1,0 +1,29 @@
+<!-- templates/calculator.html -->
+
+<h1>Number Calculator</h1>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <!-- Renders the form fields for num1 and num2 automatically -->
+    <!-- This is the Django way and is much safer than manually writing inputs -->
+    {{ form.as_p }} 
+    
+    <button type="submit">Calculate Sum</button>
+</form>
+
+{% if total is not None %}
+    <hr>
+    <h2>✅ Result:</h2>
+    <p>The sum of the two numbers is: <strong>{{ total }}</strong></p>
+{% endif %}
+
+{% comment %} 
+    Optional: If you want to show an error message for failed validation 
+{% endcomment %}
+{% if form.errors %}
+    <div style="color: red;">
+        Please correct the errors below before calculating.
+        {{ form.errors }}
+    </div>
+{% endif %}
